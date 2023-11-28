@@ -134,7 +134,8 @@ class PVArray(Component):
         temp_parms = TEMPERATURE_MODEL_PARAMETERS[temp_model][temp_type]
         air_temp = cur_site.get_air_temp(times, stat_win)['Air_Temp']
         wnd_spd = cur_site.get_wind_spd(times, stat_win)['Wind_Spd']
-        pvsys = PVSystem(surf_tilt, surf_azm, surf_alb,
+        pvsys = PVSystem(None, # not using arrays
+                         surf_tilt, surf_azm, surf_alb,
                          module= pnl_name, module_parameters= pnl_parms,
                          temperature_model_parameters = temp_parms,
                          modules_per_string= mdl_series, 
@@ -164,7 +165,7 @@ class PVArray(Component):
                                            model='haydavies')        
         
         """ Compute 'temp_cell' & 'temp_module'  """
-        temps = pvsys.sapm_celltemp(total_irrad['poa_global'], air_temp, wnd_spd)
+        temps = pvsys.get_cell_temperature(total_irrad['poa_global'], air_temp, wnd_spd, 'sapm')
         vars_dict = panel_types[self.parts[0].read_attrb('Technology')]
         egrf = vars_dict.pop('EgRef', 1.121)
         dgdt = vars_dict.pop('dEgdT', -0.0002677)
