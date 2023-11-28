@@ -32,34 +32,54 @@ Modified on 02/04/2021 to simplify the logic and make better use of Pandas metho
 import pandas as pd
 import requests
 import datetime as dt
+from collections import namedtuple
+import urllib
+#.parse.urlunsplit, parse.urlencode
+import json
 
 
 """ BaseURL defines the NASA site used to retrieve Lat/Lon specific data """
-BaseURL = 'https://power.larc.nasa.gov/cgi-bin/v1/DataAccess.py?'
+NASA_host = "power.larc.nasa.gov"
+BaseURL = 'https://power.larc.nasa.gov/api/temporal/daily/point'
+
+
+def buildUrl(host:str, path:str, parameters:dict, fragment:str = None) -> str:
+    paramstring = urllib.parse.urlencode(parameters)
+    components=['https', host, path, paramstring, fragment]
+    return urllib.parse.urlunsplit(components)
 
 
 def getLocationData(dtin):
     """ Retrieves the NASA Location data from the request response 
         Returns tuple of form (Lon, Lat' Elev)  """
-    schval = 'coordinates\": ['
-    stpt = dtin.find(schval)
-    ndpt = dtin.find(']', stpt+len(schval))
-    ln = []
-    for itm in dtin[stpt+len(schval):ndpt].rstrip().split(','):
-        ln.append(float(itm.strip('\n ')))
-    return ln
-
-    
-def getSiteElevation(lat, lon):
-    baseURL = BaseURL
-    baseReq = 'request=execute&identifier=SinglePoint&parameters=T2M'
-    dateSel = dateSel = '&startDate=20140101&endDate=20140101&userCommunity=SSE'
-    outSel = '&tempAverage=DAILY&outputList=JSON,ASCII&'
-    locSel = 'lat={0}&lon={1}&user=anonymous'.format(lat, lon)
-    cmd = baseURL + baseReq + dateSel + outSel + locSel
-    # Request NASA Data from API
+    response = json.loads(dtin)
     try:
-        data = requests.get(cmd).text
+        coords=response['geometry']['coordinates']
+        print(f"found location elevation, z={coords[2]}")
+        return coords
+    except KeyError:
+        print("Failed to parse elevation response")
+        return [None, None, None]
+
+
+def getSiteElevation(lat, lon):
+    # get elevation by asking for temperature 2m above ground level and
+    # pulling elevation from response.geometry.coordinates[3]
+    path = 'api/temporal/daily/point'
+    params = dict()
+    params["parameters"]='T2M'
+    params["start"]='20230101'
+    params["end"]='20230101'
+    params["community"]='sb'
+    params["format"]='json'
+    params["latitude"]=lat
+    params["longitude"]=lon
+    params["user"]='anonymous'
+    url = buildUrl(NASA_host, path, params)
+    # Request NASA Data from API
+    print(f"Trying to get data from NASA at {url}")
+    try:
+        data = requests.get(url).text
         return getLocationData(data)
     except requests.exceptions.ConnectionError:
         return [None, None, None]
@@ -69,14 +89,14 @@ def formulateRequest(lat, lon, selectparms= None):
         required to prepare daily statistical data used in Solar Insolation
         calculations """
     baseURL = BaseURL
-    baseReq = 'request=execute&identifier=SinglePoint&parameters='
-    stdparms = [('T10M','Temperature @ 10m (c)'), 
+    baseReq = 'parameters='
+    stdparms = [('T10M','Temperature @ 10m (c)'),
                 ('T10M_MAX', 'Max Daily Temperature (c)'),
                 ('T10M_MIN', 'Min Daily Temperature (c)'),
                 ('WS10M','Surface Wind Speed (m/s)'),
                 ('WS10M_MAX','Max Daily Wind Speed (m/s)'),
                 ('WS10M_MIN','Min Daily Wind Speed (m/s)')
-               ]   
+               ]
     now = dt.date.today()
     baseyear = now.year-1
     startdate='{0}0101'.format(baseyear-9)
@@ -90,13 +110,20 @@ def formulateRequest(lat, lon, selectparms= None):
     for p in range(len(parms)):
         if p > 0:
             reqparms += ','
-        reqparms += parms[p]      
-    dateSel = '&startDate={0}&endDate={1}&userCommunity=SSE'.format(
-            startdate, enddate)
-    outSel = '&tempAverage=DAILY&outputList=JSON,ASCII&'
-    locSel = 'lat={0}&lon={1}&user=anonymous'.format(lat, lon)
-    cmd = baseURL + baseReq + reqparms + dateSel + outSel + locSel    
-    return (cmd, reqparms.split(','))
+        reqparms += parms[p]
+
+    path = 'api/temporal/daily/point'
+    params = dict()
+    params["parameters"]=reqparms
+    params["start"]=startdate
+    params["end"]=enddate
+    params["community"]='sb'
+    params["format"]='json'
+    params["latitude"]=lat
+    params["longitude"]=lon
+    params["user"]='anonymous'
+    url = buildUrl(NASA_host, path, params)
+    return (url, reqparms.split(','))
 
 
 def LoadNasaData(lat, lon, show= False, selectparms= None): 
@@ -104,13 +131,14 @@ def LoadNasaData(lat, lon, show= False, selectparms= None):
         required to prepare daily statistical data used in Solar Insolation
         calculations """
     cmd = formulateRequest(-0.2739, 36.3765, selectparms)
+    print(f"cmd is {json.dumps(cmd)}")
     jdi = requests.get(cmd[0]).json()
     cols = cmd[1]
-    df = pd.json_normalize(jdi['features'][0]['properties']['parameter'][cols[0]]).T
+    df = pd.json_normalize(jdi['properties']['parameter'][cols[0]]).T
     df.index = pd.to_datetime(df.index)
     df.rename(columns={0: cols[0]}, inplace= True)
     for c in cols[1:]:
-        dfc = pd.json_normalize(jdi['features'][0]['properties']['parameter'][c]).T
+        dfc = pd.json_normalize(jdi['properties']['parameter'][c]).T
         dfc.index = pd.to_datetime(df.index)
         dfc.rename(columns={0: c}, inplace= True)
         df = df.join(dfc)
@@ -131,6 +159,9 @@ def LoadNasaData(lat, lon, show= False, selectparms= None):
         dp = pd.DataFrame(dg[col].std())
         dp.rename(columns={col: 'STDV'}, inplace= True)
         atmo_dict[col] = atmo_dict[col].join(dp)       
+    for key, value in atmo_dict.items():
+        print(f"key = {key}")
+        print(value.to_string())
     return atmo_dict
 
 
