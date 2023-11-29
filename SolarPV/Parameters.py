@@ -52,6 +52,16 @@ load_types = {'Light, LED':{'Watts':5.0, 'Mode': "AC"},
               'Well Pump AC, 2 HP':{'Watts':3000.0, 'Mode': "AC"},
               'Refrigerator, DC 18cf':{'Watts': 40, 'Mode':'DC'},
               'Well Pump DC, 1 HP':{'Watts':500.0, 'Mode': "DC"},
+              'DC load, 0.5 W':{'Watts':0.5, 'Mode':"DC"},
+              'DC load, 1.0 W':{'Watts':1.0, 'Mode':"DC"},
+              'DC load, 1.5 W':{'Watts':1.5, 'Mode':"DC"},
+              'DC load, 2.0 W':{'Watts':2.0, 'Mode':"DC"},
+              'DC load, 2.5 W':{'Watts':2.5, 'Mode':"DC"},
+              'DC load, 3.0 W':{'Watts':3.0, 'Mode':"DC"},
+              'DC load, 3.5 W':{'Watts':3.5, 'Mode':"DC"},
+              'DC load, 4.0 W':{'Watts':4.0, 'Mode':"DC"},
+              'DC load, 4.5 W':{'Watts':4.5, 'Mode':"DC"},
+              'DC load, 5.0 W':{'Watts':5.0, 'Mode':"DC"},
               }
 
 # Define the Albedo factor for Site surface conditions
