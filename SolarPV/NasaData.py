@@ -134,7 +134,7 @@ def LoadNasaData(lat, lon, show= False, selectparms= None):
     """ Execute a request from NASA API for 10 years of atmospheric data 
         required to prepare daily statistical data used in Solar Insolation
         calculations """
-    cmd = formulateRequest(-0.2739, 36.3765, selectparms)
+    cmd = formulateRequest(lat, lon, selectparms)
     print(f"cmd is {json.dumps(cmd)}")
     jdi = requests.get(cmd[0]).json()
     cols = cmd[1]
