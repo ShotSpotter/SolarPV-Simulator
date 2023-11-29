@@ -29,7 +29,36 @@ The following is a list of features and/or attributes that the solution must sat
 Full documentation of this project maybe found a **TBD**
 
 # Installation
-Installation of this Project is provided through **TBD**
+
+## Clone the repository
+```
+git clone git@github.com:itprorh66/SolarPV-Simulator.git
+```
+## Set up a virtual environment and install dependencies
+```
+cd SolarPV-Simulator
+python -m venv env
+# Windows
+env\Scripts\activate.bat
+# linux/mac
+source env/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+## Start GUI Application
+```
+cd SPVSim.py
+python SPVSim.py
+```
+This will open a [tkinter](https://docs.python.org/3/library/tkinter.html) application.
+
+To get started, try analyzing a prebuilt array.
+* Use File -> Load File to load SolarPV/Models/DemoSystem_001.spv
+* Click "Analyze". System will pull temperature and insolation data from NASA POWER API.
+* Report -> System Description outputs a text report describing the solar power system.
+* Report -> Site Load outputs a text report describing loads
+* Various options under the Display menu show system performance over the course of the year.
 
 # Sources
 This project utilizes the development efforts of the following projects:
