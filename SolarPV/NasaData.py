@@ -83,7 +83,7 @@ def getSiteElevation(lat, lon):
     query_parameters["format"]='json'
     query_parameters["latitude"]=lat
     query_parameters["longitude"]=lon
-    query_parameters["user"]='solarpv_simulator'
+    query_parameters["user"]='anonymous'
     url = buildUrl(NASA_host, apipath, query_parameters)
     # Request NASA Data from API
     print(f"Trying to get data from NASA at {url}")
