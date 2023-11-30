@@ -48,7 +48,7 @@ python -m pip install -r requirements.txt
 
 ## Start GUI Application
 ```
-cd SPVSim.py
+cd SolarPV
 python SPVSim.py
 ```
 This will open a [tkinter](https://docs.python.org/3/library/tkinter.html) application.
