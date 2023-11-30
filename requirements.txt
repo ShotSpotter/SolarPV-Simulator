@@ -19,7 +19,6 @@ pytz==2023.3.post1
 requests==2.31.0
 scipy==1.11.4
 six==1.16.0
-tk==0.1.0
 tzdata==2023.3
 unicodecsv==0.14.1
 urllib3==2.1.0
