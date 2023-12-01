@@ -289,6 +289,7 @@ def computOutputResults(attrb_dict,  ArP, ArV, ArI, acLd, dcLd, wkDict):
         pload = totUsrLd + sysLd
         vout = min(ArV, internal_parm['pvmxv'])
         iout = min(ArI, internal_parm['pvmxi'])
+        # This assumes power loss of 10% in discharging battery
         drain = ArP - pload*1.1
         #Test for Batbank and either charge state or ability to discharge
         if bnkFlg and (drain >= 0 or (drain <0 and  attrb_dict['Bnk'].is_okay())):
@@ -298,6 +299,7 @@ def computOutputResults(attrb_dict,  ArP, ArV, ArI, acLd, dcLd, wkDict):
                 bv = 1
             if drain >= 0:
                 vout = min(vout, internal_parm['VmxChg'])
+                # this seems to be requiring overvoltage of 20% to charge battery
                 bv = bv*1.2
                 if internal_parm['cntlType']  == 'MPPT':
                     iout = max(drain/vout, drain/bv)                                       
@@ -307,10 +309,21 @@ def computOutputResults(attrb_dict,  ArP, ArV, ArI, acLd, dcLd, wkDict):
             else:
                 # Discharge Battery state
                 if abs(drain) <= attrb_dict['Bnk'].current_power():
-                    if vout == 0.0 or iout == 0.0:
-                        vout = bv
-                        iout = min(internal_parm['ImxDchg'], -drain/vout)
-                    iout= -1* iout
+                    # if vout == 0.0 or iout == 0.0:
+                    #     vout = bv
+                    #     iout = min(internal_parm['ImxDchg'], -drain/vout)
+                    # iout= -1* iout
+
+                    # The above is incorrect: it has the system only draw from the battery when
+                    # PV array output is zero. If the PV array is supplying more than 0 W
+                    # (although insufficient to satisfy the load) the load goes
+                    # unpowered instead of drawing from the battery. We should always
+                    # draw from the battery when the battery has sufficient capacity. In the
+                    # present case, we know the battery does because current_power() returns
+                    # "battery available i * battery V at the present hour"]
+                    # So remove the case statement and always satify the unmet load ("drain").
+                    vout = bv
+                    iout = -1 * min(internal_parm['ImxDchg'], -drain/vout)
                 else:
                     # Bnk can't provide needed power
                     if ArP < sysLd:
@@ -318,6 +331,9 @@ def computOutputResults(attrb_dict,  ArP, ArV, ArI, acLd, dcLd, wkDict):
                         msg += '\n {0:.2f} watts needed but only {1:.2f} watts generated'
                         wkDict['Error'] = (msg.format(sysLd, ArP), 'Warning')
                     else:
+                        print(f"Impossible state: drain is negative ({drain}) implying battery draw, but Arp {ArP} >= sysLd {sysLd}")
+                        msg = f"Impossible state: drain is negative ({drain}) implying battery draw, but Arp {ArP} >= sysLd {sysLd}"
+                        wkDict['Error'] = (msg, 'Warning')
                         iout = -1 * ((ArP-sysLd)/vout)
             #update Bank State
             attrb_dict['Bnk'].update_soc(iout, wkDict)
@@ -334,7 +350,9 @@ def computOutputResults(attrb_dict,  ArP, ArV, ArI, acLd, dcLd, wkDict):
             if totUsrLd > 0: 
                 wkDict['PS'] = wkDict['PO']/pload              
             if ArP > 0:
-                wkDict['DE'] = wkDict['PO'] /ArP     
+                # DE is fraction of array capacity used to power load.
+                # need to handle case where ArP > 0 but battery is providing a portion of power
+                wkDict['DE'] = min(wkDict['PO'],ArP) /ArP
         else:
             # No battery exists or battery can't be discharged further
             if ArP < sysLd and totUsrLd > 0:
