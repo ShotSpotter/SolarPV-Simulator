@@ -56,8 +56,8 @@ from SPVSwbrd import spvSwitchboard
 class SPVSIM:
     def __init__(self):
         register_matplotlib_converters()
-        self.debug = False
-        self.perf_rept = False
+        self.debug = True
+        self.perf_rept = True
         self.errflg = False
         self.wdir = os.getcwd()
         self.mdldir = os.path.join(self.wdir, 'Models')
