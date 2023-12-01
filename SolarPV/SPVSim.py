@@ -336,6 +336,8 @@ class SPVSIM:
                     self.stw.show_message(msg + errfrm[0], errfrm[1])
                     break
 
+        
+        
         # Create the DataFrame
         rslt = pd.DataFrame({'PowerOut': PO,
                              'ArrayPower': self.array_out['ArrayPower'],
@@ -343,7 +345,8 @@ class SPVSIM:
                            'DelvrEff': DE,
                            'BatSoc': BS,
                            'BatDrain': BD,
-                           'BatPwr': BP
+                           'BatPwr': BP,
+                           'Warn': EM
                            }, index = self.times.index)
 
         rslt = rslt.assign(Month= self.times['Month'],
@@ -351,6 +354,7 @@ class SPVSIM:
                                  DayofYear= self.times['DayofYear'])
         rslt = rslt.join(hourly_load(self.times.index,
                                 self.load.get_load_profile()))
+        rslt.to_csv('model_output.csv')
         return rslt
 
     def execute_simulation(self):
