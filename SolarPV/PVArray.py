@@ -21,17 +21,20 @@ modified on 1/8/2021 - to adapt to pvlib 0.8 requirements for cell
                or FITNESS FOR A PARTICULAR PURPOSE.
  -------------------------------------------------------------------------------
 """
+import os
+import pandas as pd
 from tkinter import GROOVE, EW, CENTER, RIGHT
 from FormBuilder import DataForm
 from Component import Component
 from FieldClasses import data_field, option_field
 from Parameters import panel_racking, albedo_types, panel_types, temp_model_xlate
 
-#from pvlib import *
+import pvlib
 from pvlib.pvsystem import PVSystem
 #from pvlib.solarposition import spa_python
 #from pvlib.irradiance import aoi, get_total_irradiance
-from pvlib.temperature import TEMPERATURE_MODEL_PARAMETERS 
+from pvlib.temperature import TEMPERATURE_MODEL_PARAMETERS
+
 
 class PVArray(Component):
     """ Methods associated with the definition, display, and operation of a
@@ -113,6 +116,126 @@ class PVArray(Component):
         self.form = ArrayForm(parent_frame, self, row=1, column=1,  width= 300, height= 300,
                       borderwidth= 5, relief= GROOVE, padx= 10, pady= 10, ipadx= 5, ipady= 5)
         return self.form
+
+    def define_array_performance_nsrdb(self, times, cur_site, cur_inv, stat_win):
+        """ Query [NSRDB](https://nsrdb.nrel.gov/data-sets/us-data) for temperature
+         and insolation data based on satellite measurements. Data is available from """
+
+        # for now, ignore times passed as input and build three years of NSRDB
+        # You will need an api key from https://developer.nrel.gov/signup/
+        # and pass the api key in from the calling shell:
+        # export NREL_API_KEY='my_api_key'
+        # export NREL_APO_USER='user@example.com'
+        apikey=os.getenv('NREL_API_KEY')
+        apiuser=os.getenv('NREL_API_USER')
+        years = [2020,2021,2022]
+
+        # set up the intrinsic properties of the array
+        inv_name = None
+        inv_parameters = None
+        if cur_inv is not None:
+            inv_name = cur_inv.read_attrb('Name')
+            inv_parameters = cur_inv.get_parameters()
+        surf_tilt = self.read_attrb('tilt')
+        surf_azm = self.read_attrb('azimuth')
+        surf_alb = self.read_attrb('albedo') # better to get this from nrsdb_data
+        mdl_series = self.read_attrb('uis')
+        mdl_sip = self.read_attrb('sip')
+        loc = cur_site.get_location()
+        mdl_rack_config =self.read_attrb('mtg_cnfg')
+        pnl_name = self.parts[0].read_attrb('Name')
+        pnl_parms = self.parts[0].get_parameters()
+        temp_model = temp_model_xlate[mdl_rack_config][0]
+        temp_type = temp_model_xlate[mdl_rack_config][1]
+        temp_parms = TEMPERATURE_MODEL_PARAMETERS[temp_model][temp_type]
+
+        pvsys = PVSystem(None, # not using Arrays
+                         surf_tilt,
+                         surf_azm,
+                         surf_alb,
+                         module = pnl_name,
+                         module_parameters = pnl_parms,
+                         temperature_model_parameters = temp_parms,
+                         modules_per_string = mdl_series,
+                         strings_per_inverter= mdl_sip,
+                         inverter = inv_name,
+                         inverter_parameters = inv_parameters,
+                         racking_model = mdl_rack_config,
+                         name= loc.name
+                         )
+
+        try:
+            """ Look up data from NRSDB. get_psm3() returns dataframe in [0], metadata in [1].
+            Using map_variables=True (future pvlib default), the returned column names are
+            ['Year', 'Month', 'Day', 'Hour', 'Minute', 'temp_air', 'Dew Point', 'dhi', 'dni',
+            'ghi', 'albedo', 'pressure', 'wind_direction','wind_speed'] """
+            print(f"Fetching data from NRSDB for {years}")
+            nrsdb_data = pd.concat([
+                        pvlib.iotools.get_psm3(
+                            loc.latitude,
+                            loc.longitude,
+                            apikey,
+                            apiuser,
+                            names=str(year),
+                            map_variables=True, # change to pvlib names
+                            leap_day=True
+                            )[0] # df is element 0, metadata is element 1
+                        for year in years])
+        except:
+            print("Failed to read NRSDB data. Ensure environment variables ${NREL_API_KEY} and ${NREL_API_USER} has been set")
+            return None
+
+        air_temp = nrsdb_data['temp_air']
+        wind_speed = nrsdb_data['wind_speed']
+        times = nrsdb_data.index # ignore user timeseries and use whatever is in our NRSDB data
+
+        """Define 'apparent_elevation', 'apparent_zenith', 'azimuth',
+           'elevation', 'equation_of_time', and 'zenith'   """
+        solpos = loc.get_solarposition(times, pressure= None, temperature= air_temp)
+
+        """Define 'airmass_relative'  & 'airmass_absolute' """
+        airmass = loc.get_airmass(times, solar_position=solpos, model='kastenyoung1989')
+
+        """ Compute 'aoi' """
+        aoi = pvsys.get_aoi(solpos['zenith'], solpos['azimuth'])
+
+        """ Compute 'poa_global',  'poa_direct',  'poa_diffuse',
+            'poa_sky_diffuse', & 'poa_ground_diffuse' """
+        total_irrad = pvsys.get_irradiance(solpos['zenith'],
+                                           solpos['azimuth'],
+                                           nrsdb_data['dni'],
+                                           nrsdb_data['ghi'],
+                                           nrsdb_data['dhi'],
+                                           dni_extra=None,
+                                           airmass=airmass,
+                                           model='haydavies')
+
+        """ Compute 'temp_cell' & 'temp_module'  """
+        temps = pvsys.get_cell_temperature(total_irrad['poa_global'],
+                                           air_temp,
+                                           wind_speed,
+                                           'sapm')
+
+        # egrf and dgdt are Silicon-specific; we should throw an exception if Technology is something else
+        vars_dict = panel_types[self.parts[0].read_attrb('Technology')]
+        egrf = vars_dict.pop('EgRef', 1.121)
+        dgdt = vars_dict.pop('dEgdT', -0.0002677)
+
+        photocurrent, saturation_current, resistance_series, resistance_shunt, nNsVth = (
+            pvsys.calcparams_desoto(total_irrad['poa_global'],
+                                    temp_cell= pnl_parms['T_NOCT']))
+
+        """ Compute Total Array  'i_sc',  'v_oc',  'i_mp',  'v_mp',
+            'p_mp',  'i_x', &  'i_xx' """
+        pvarray_timeseries = pvsys.scale_voltage_current_power(
+                                            pvsys.singlediode(photocurrent,
+                                                              saturation_current,
+                                                              resistance_series,
+                                                              resistance_shunt,
+                                                              nNsVth))
+        pvarray_timeseries.index.name = 'Time'
+        return pvarray_timeseries
+
 
     def define_array_performance(self, times, cur_site, cur_inv, stat_win):
         inv_name = None
