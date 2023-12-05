@@ -34,6 +34,8 @@ class PVPanel(Component):
         Component.__init__(self, master,'PV Panel', **kargs)
 
     def _define_attrbs(self):
+        """  best descriptions of CEC Parameters:
+             https://pvsc-python-tutorials.github.io/PVSC48-Python-Tutorial/Tutorial%204%20-%20Model%20a%20Module%27s%20Performance.html#cec-model-aka-sam-or-6-parameter-model """
         self.args = {
                  'm_mfg':option_field('m_mfg', 'Manufactuerer:', '',
                                     sorted(list(set(self.master.modules['Manufacturer']))),
@@ -42,25 +44,25 @@ class PVPanel(Component):
                                     sorted(list(set(self.master.modules['Model']))),
                                     self.master.modules),
                  'Name':data_field('Name', 'Description:', ''),
-                 'Technology':data_field('Technology','Cell Type:  ', ''),
-                 'T_NOCT':data_field('T_NOCT', 'Nominal Operating Cell Temp:', 0.0),
+                 'Technology':data_field('Technology','Cell Type: ', 'Mono-c-Si'),
+                 'T_NOCT':data_field('T_NOCT', 'Nominal Operating Cell Temp (C):', 0.0),
                  'V_mp_ref':data_field('V_mp_ref','Voltage at Max Power (Vmp):', 0.0),
                  'I_mp_ref':data_field('I_mp_ref', 'Current at Max Power (Imp):', 0.0),
                  'V_oc_ref':data_field('V_oc_ref','Open Circuit Voltage (Voc):', 0.0),
                  'I_sc_ref':data_field('I_sc_ref','Short Circuit Current (Isc):', 0.0),
-                 'PTC':data_field('PTC', 'Power Rating Pmpp (W):', 0.0),
-                 'A_c':data_field('A_c', 'Cell Size(cm):', 0.0),
-                 'N_s':data_field('N_s', 'Number of cells:', 0),
-                 'R_s':data_field('R_s', 'Series Resistance (ohms):', 0.0),
-                 'R_sh_ref':data_field('R_sh_ref','Shunt Resistance (ohms):', 0.0),
-                 'BIPV':data_field('BIPV', 'BIPV:', 0.0),
-                 'alpha_sc':data_field('alpha_sc', 'alpha_sc:', 0.0),
-                 'beta_oc':data_field('beta_oc', 'beta_oc:', 0.0),
-                 'a_ref':data_field('a_ref', 'a_ref:', 0.0),
-                 'I_L_ref':data_field('I_L_ref', 'I_L_ref:', 0.0),
-                 'I_o_ref':data_field('I_o_ref', 'I_o_ref:', 0.0),
-                 'Adjust':data_field('Adjust', 'Adjust:', 0.0),
-                 'gamma_r':data_field('gamma_r', 'gamma_r:', 0.0)
+                 'PTC':data_field('PTC', 'Power Rating (Pmpp, W):', 0.0),
+                 'A_c':data_field('A_c', 'Cell area (A_c, m^2):', 0.0),
+                 'N_s':data_field('N_s', 'Number of cells in module (Ns):', 0),
+                 'R_s':data_field('R_s', 'Series Resistance (Rs, ohms):', 0.0),
+                 'R_sh_ref':data_field('R_sh_ref','Shunt Resistance (Rsh, ohms):', 0.0),
+                 'BIPV':data_field('BIPV', 'Building-integrated (BIPV, 1|0):', 0.0),
+                 'alpha_sc':data_field('alpha_sc', 'Temp Coeff of Isc (alpha_sc, A/K):', 0.0),
+                 'beta_oc':data_field('beta_oc', 'Temp Coeff of Voc (beta_oc, V/K):', 0.0),
+                 'a_ref':data_field('a_ref', 'Diode ideality factor (a_ref, V):', 0.0),
+                 'I_L_ref':data_field('I_L_ref', 'Light-generated photocurrent (I_L_ref, A):', 0.0),
+                 'I_o_ref':data_field('I_o_ref', 'Dark saturation current (I_o_ref, A):', 0.0),
+                 'Adjust':data_field('Adjust', 'Adjustment to Temp Coeff (Adjust, %):', 0.0),
+                 'gamma_r':data_field('gamma_r', 'Temp Coeff of Power (gamma_r, %/K):', 0.0)
                  }
 
 
@@ -176,17 +178,17 @@ class PanelForm(DataForm):
                                            row= 4, column= 2, sticky=(EW),
                                            justify= LEFT, columnspan= 8) ,
 
-                'col40': self.create_space(10, row= 5, column= 0, sticky= (EW)),
-                'col41': self.create_space(10, row= 5, column= 1, sticky= (EW)),
-                'col42': self.create_space(10, row= 5, column= 2, sticky= (EW)),
-                'col43': self.create_space(10, row= 5, column= 3, sticky= (EW)),
-                'col44': self.create_space(10, row= 5, column= 4, sticky= (EW)),
-                'col45': self.create_space(10, row= 5, column= 5, sticky= (EW)),
-                'col46': self.create_space(10, row= 5, column= 6, sticky= (EW)),
-                'col47': self.create_space(10, row= 5, column= 7, sticky= (EW)),
-                'col48': self.create_space(10, row= 5, column= 8, sticky= (EW)),
-                'col49': self.create_space(10, row= 5, column= 9, sticky= (EW)),
-                'col410': self.create_space(10, row= 5, column= 10, sticky= (EW)),
+                'col40': self.create_space(4, row= 5, column= 0, sticky= (EW)),
+                'col41': self.create_space(4, row= 5, column= 1, sticky= (EW)),
+                'col42': self.create_space(4, row= 5, column= 2, sticky= (EW)),
+                'col43': self.create_space(4, row= 5, column= 3, sticky= (EW)),
+                'col44': self.create_space(4, row= 5, column= 4, sticky= (EW)),
+                'col45': self.create_space(4, row= 5, column= 5, sticky= (EW)),
+                'col46': self.create_space(4, row= 5, column= 6, sticky= (EW)),
+                'col47': self.create_space(4, row= 5, column= 7, sticky= (EW)),
+                'col48': self.create_space(4, row= 5, column= 8, sticky= (EW)),
+                'col49': self.create_space(4, row= 5, column= 9, sticky= (EW)),
+                'col410': self.create_space(4, row= 5, column= 10, sticky= (EW)),
 
                 'lbl_PTC':self.create_label(self.src.get_attrb('PTC'),
                                              row= 6, column= 0, justify= RIGHT,
