@@ -121,14 +121,20 @@ class PVArray(Component):
         """ Query [NSRDB](https://nsrdb.nrel.gov/data-sets/us-data) for temperature
          and insolation data based on satellite measurements. Data is available from """
 
-        # for now, ignore times passed as input and build three years of NSRDB
         # You will need an api key from https://developer.nrel.gov/signup/
         # and pass the api key in from the calling shell:
         # export NREL_API_KEY='my_api_key'
         # export NREL_APO_USER='user@example.com'
+
+        # for now, ignore times passed as input and build five years of NSRDB data
+        # so that we can join against the passed value of {times} in the caller.
+        # Caller aligns index on the hour, so we need to request 30 minute data so
+        # that both 00:00:00 (used in join) and 00:30:00 data (ignored) are present
+        # Solar data dataframe is of size 5 * 365 * 24 * 2 = 87,600 rows, should be ok.
+
         apikey=os.getenv('NREL_API_KEY')
         apiuser=os.getenv('NREL_API_USER')
-        years = [2020,2021,2022]
+        years = [2018, 2019, 2020, 2021, 2022]
 
         # set up the intrinsic properties of the array
         inv_name = None
@@ -177,6 +183,7 @@ class PVArray(Component):
                             apikey,
                             apiuser,
                             names=str(year),
+                            interval=30,
                             map_variables=True, # change to pvlib names
                             leap_day=True
                             )[0] # df is element 0, metadata is element 1
