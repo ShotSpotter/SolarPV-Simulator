@@ -421,10 +421,6 @@ class SPVSIM:
 
     def debug_next(self):
         """ Handy function for debugging  """
-#        print(self.times)
-#        calndr = create_calendar_indices(self.site.read_attrb('tz'))
-#        print(calndr.head())
-#        print(calndr.index)
         if self.perf_rept:
             fo = open(self.outfile, 'w')
             fo.write(self.out_rec)
