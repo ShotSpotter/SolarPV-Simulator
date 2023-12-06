@@ -62,63 +62,17 @@ def convert_to_dec_hrs(time):
     h += time.second/3600.0
     return h
 
-def month_timestamp(ts):
-    """ Produces an Numpy Array of the Integer Month
-        from a Panda DateTimeIndex Series """
-    k = list()
-    for t in ts:
-        k.append(t.month)
-    return np.array(k)
-
-def doy_timestamp(ts):
-    """ Produces an Numpy Array of the Integer Day Of Year
-        from a Panda DateTimeIndex Series """
-    k = list()
-    for t in ts:
-        k.append(t.dayofyear)
-    return np.array(k)
-
-def dom_timestamp(ts):
-    """ Produces an Numpy Array of the Integer Day Of Month
-        from a Panda DateTimeIndex Series """
-    k = list()
-    mon = -1
-    doy = -1
-    dom = 0
-    for t in ts:
-        m = t.month
-        if mon != m:
-            dom = 1
-            doy = t.dayofyear
-            mon = m
-        elif t.dayofyear != doy:
-            dom += 1
-            doy = t.dayofyear
-        k.append(dom)
-    return np.array(k)
-
-def create_time_indices(tm_z):
+def create_time_indices(startdate:str , enddate: str, tzinfo: str):
     """ Create Base Dataframe indicies for use in running simulations """
-    now = date.today()
-    baseyear = now.year-2
-    if baseyear%4 == 0:
-        # Don't use leap year
-        baseyear -= 1
-    st = '{0}0101T0000{1:+}'.format(baseyear, tm_z)
-    nt = '{0}1231T2300{1:+}'.format(baseyear, tm_z)
-    times = pd.date_range(start= st,
-                             end= nt,
-                             freq='H')
-
-    months = month_timestamp(times).astype(int)
-    days_of_year = doy_timestamp(times).astype(int)
-    days_of_month = dom_timestamp(times).astype(int)
-    timedf = pd.DataFrame({'Month':months,
-                             'DayofYear': days_of_year,
-                             'DayofMonth': days_of_month},
-                        index = times)
-
-    return timedf
+    daterange = pd.date_range(start=startdate, end=enddate, tz=tzinfo, freq='H')
+    time_df = pd.DataFrame({
+        "Hour": np.arange(0,len(daterange)),
+        "Year": daterange.year,
+        "Month": daterange.month,
+        "DayofMonth": daterange.day,
+        "DayofYear": daterange.dayofyear
+    }, index=daterange)
+    return time_df
 
 def hourly_load(times, load):
     """ Create a Data Frame of Hourly Load in Watts"""
