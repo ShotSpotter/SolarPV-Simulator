@@ -28,7 +28,7 @@ from tkinter import Tk, GROOVE
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 
-from datetime import datetime
+import datetime
 import os.path
 import pickle
 import numpy as np
@@ -233,7 +233,7 @@ class SPVSIM:
                 Array Power (AP) = AV * AC
         """
         if len(self.array_list)> 0:
-            frst_array = self.array_list[0].define_array_performance(self.times.index,
+            frst_array = self.array_list[0].define_array_performance_nsrdb(self.times.index,
                                             self.site, self.inv, self.stw)
             rslt = pd.DataFrame({'ArrayVolts':frst_array['v_mp'],
                                  'ArrayCurrent':frst_array['i_mp'],
@@ -242,7 +242,7 @@ class SPVSIM:
             for ar in range(1, len(self.array_list)):
                 sarf  =  self.array_list[ar].is_defined()
                 if sarf:
-                   sec_array = self.array_list[ar].define_array_performance(self.times.index,
+                   sec_array = self.array_list[ar].define_array_performance_nsrdb(self.times.index,
                                                     self.site, self.inv, self.stw)
                    for rw in range(len(rslt)):
                        if rslt['ArrayPower'].iloc[rw] > 0 and sec_array['p_mp'].iloc[rw] >0:
@@ -369,7 +369,7 @@ class SPVSIM:
 
         if self.perform_base_error_check():
             self.errflg = False
-            rt = datetime.now()
+            rt = datetime.datetime.now()
             ft = 'run_{0}_{1:02}_{2}_{3:02}{4:02}{5:02}.txt'
             self.outfile = ft.format(rt.year, rt.month, rt.day,
                                      rt.hour, rt.minute, rt.second)
@@ -378,8 +378,15 @@ class SPVSIM:
             if self.stw is not None:
                 self.stw.show_message('Starting System Analysis')
             self.loc = self.site.get_location()
-            self.times = create_time_indices(self.site.read_attrb('tz'))
-            self.site.get_atmospherics(self.times.index, self.stw)
+            #FIXME put start, end dates in UI
+            datestart = '2020-01-01'
+            dateend = '2022-12-31'
+            #FIXME tz needs to match what is retuend by NSRDB in PVArray
+            tz = int(self.site.read_attrb('tz'))
+            tzinfo = datetime.timezone(datetime.timedelta(hours=tz))
+            self.times = create_time_indices(datestart, dateend, tzinfo)
+            # remove this, we get actual temps from NRSdata
+            # self.site.get_atmospherics(self.times.index, self.stw)
             if bnkflg:
                 self.bnk.initialize_bank()
             self.array_out = self.combine_arrays()
